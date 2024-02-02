@@ -7,10 +7,10 @@ sys.path.append(projDir) #look in the directory containing MachineLearningCourse
 sys.path.append(curDir)  #look in the directory of this file too, i.e., Module01/
 
 #specify the directory to store your visualization files
-kOutputDirectory = "/users/stanleykok"  #use this for Mac or Linux
-#kOutputDirectory = "C:\\temp\\visualize" #use this for Windows
+# kOutputDirectory = "/users/stanleykok"  #use this for Mac or Linux
+kOutputDirectory = "C:\\Users\\winyan\\Git Projects\\IS5126_Guided_Project\\Visual" #use this for Windows
 
-runUnitTest = True #False
+runUnitTest = False
 if runUnitTest:
     # Little synthetic dataset to help with implementation. 2 features, 8 samples.
     xTrain = [[.1, .1], [.2, .2], [.2, .1], [.1, .2], [.95, .95], [.9, .8], [.8, .9], [.7, .6]]
@@ -39,7 +39,7 @@ if runUnitTest:
         visualization.Save()
         
 # Once your LogisticRegression learner seems to be working, set this flag to True and try it on the spam data
-runSMSSpam  = False #True
+runSMSSpam = True
 if runSMSSpam:
     import MachineLearningCourse.MLProjectSupport.SMSSpam.SMSSpamDataset as SMSSpamDataset
 
@@ -64,24 +64,44 @@ if runSMSSpam:
     
     print("Learning the logistic regression model:")
     import MachineLearningCourse.MLUtilities.Learners.LogisticRegression as LogisticRegression
-    logisticRegressionModel = LogisticRegression.LogisticRegression()
-    
-    logisticRegressionModel.fit(xTrain, yTrain, stepSize=1.0, convergence=0.005)
-    
-    #############################
-    # Evaluate the model
-    
     import MachineLearningCourse.MLUtilities.Evaluations.EvaluateBinaryClassification as EvaluateBinaryClassification
-    
-    print ("\nLogistic regression model:")
-    logisticRegressionModel.visualize()
-    EvaluateBinaryClassification.ExecuteAll(yValidate, logisticRegressionModel.predict(xValidate, classificationThreshold=0.5))
 
-    #################
+    logisticRegressionModel = LogisticRegression.LogisticRegression()
+
+    # logisticRegressionModel.fit(xTrain, yTrain, stepSize=1.0, convergence=0.005)
+    # FOr question 3c, convergence parameter tuning
+    convergence_values = [0.05, 0.01, 0.001, 0.0001, 0.00001]
+
+    for convergence in convergence_values:
+        print("\nConvergence value used:", convergence)
+
+        # Fit the model with the current convergence value
+        logisticRegressionModel.fit(xTrain, yTrain, stepSize=1.0, convergence=convergence)
+
+        # Evaluate the model
+        print("\nLogistic regression model at convergence value of:", convergence)
+        logisticRegressionModel.visualize()
+        EvaluateBinaryClassification.ExecuteAll(yValidate, logisticRegressionModel.predict(xValidate, classificationThreshold=0.5))
+
+    #############################
     # You may find the following module helpful for making charts. You'll have to install matplotlib (see the lecture notes).
     #
-    # import MachineLearningCourse.MLUtilities.Visualizations.Charting as Charting
-    # 
-    # # trainLosses, validationLosses, and lossXLabels are parallel arrays with the losses you want to plot at the specified x coordinates
-    #
-    # Charting.PlotSeries([trainLosses, validationLosses], ['Train', 'Validate'], lossXLabels, chartTitle="Logistic Regression", xAxisTitle="Gradient Descent Steps", yAxisTitle="Avg. Loss", outputDirectory=kOutputDirectory, fileName="3-Logistic Regression Train vs Validate loss")
+    import MachineLearningCourse.MLUtilities.Visualizations.Charting as Charting
+
+    # trainLosses, validationLosses, and lossXLabels are parallel arrays with the losses you want to plot at the specified x coordinates
+    trainLosses = []
+    validationLosses = []
+    lossXLabels = []
+
+    for step in range(0, 1000, 100):
+        logisticRegressionModel.incrementalFit(xTrain, yTrain, maxSteps=100, stepSize=1.0, convergence=0.00001)
+
+        train_loss = logisticRegressionModel.loss(xTrain, yTrain)
+        trainLosses.append(train_loss)
+
+        validation_loss = logisticRegressionModel.loss(xValidate, yValidate)
+        validationLosses.append(validation_loss)
+
+        lossXLabels.append(step)
+
+    Charting.PlotSeries([trainLosses, validationLosses], ['Train', 'Validate'], lossXLabels, chartTitle="Logistic Regression", xAxisTitle="Gradient Descent Steps", yAxisTitle="Avg. Loss", outputDirectory=kOutputDirectory, fileName="3-Logistic Regression Train vs Validate loss")
