@@ -1,5 +1,6 @@
 #This preamble tells the Python interpreter to look in the folder containing
 #the MachineLearningCourse dir for the relevant Python files.
+# Test
 import sys,os
 curDir = os.path.dirname(os.path.abspath(__file__))
 projDir = os.path.join(curDir,"..","..","..")
