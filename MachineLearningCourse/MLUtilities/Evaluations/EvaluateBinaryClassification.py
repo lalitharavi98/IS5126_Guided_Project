@@ -35,26 +35,64 @@ def Accuracy(y, yPredicted):
 
 def Precision(y, yPredicted):
     print("Stub precision in ", __file__)
-    return 0.0
+    confusion_matrix = ConfusionMatrix(y, yPredicted)
+    true_positives = confusion_matrix[1][1]
+    false_positives = confusion_matrix[0][1]
+    if true_positives + false_positives == 0:
+        return 0.0
+    return true_positives / (true_positives + false_positives)
 
 def Recall(y, yPredicted):
     print("Stub Recall in ", __file__)
-    return 0.0
+    confusion_matrix = ConfusionMatrix(y, yPredicted)
+    true_positives = confusion_matrix[1][1]
+    false_negatives = confusion_matrix[1][0]
+
+    if true_positives + false_negatives == 0:
+        return 0.0
+    return true_positives / (true_positives + false_negatives)
 
 def FalseNegativeRate(y, yPredicted):
     print("Stub FalseNegativeRate in ", __file__)
-    return 0.0
+    confusion_matrix = ConfusionMatrix(y, yPredicted)
+    false_negatives = confusion_matrix[1][0]
+    true_positives = confusion_matrix[1][1]
+    if false_negatives + true_positives == 0:
+        return 0.0
+
+    return false_negatives / (false_negatives + true_positives)
 
 def FalsePositiveRate(y, yPredicted):
     print("Stub FalsePositiveRate in ", __file__)
-    return 0.0
+    confusion_matrix = ConfusionMatrix(y, yPredicted)
+    false_positives = confusion_matrix[0][1]
+    true_negatives = confusion_matrix[0][0]
+
+    if false_positives + true_negatives == 0:
+        return 0.0
+
+    return false_positives / (false_positives + true_negatives)
+
 
 def ConfusionMatrix(y, yPredicted):
     # This function should return: [[<# True Negatives>, <# False Positives>], [<# False Negatives>, <# True Positives>]]
     #  Hint: writing this function first might make the others easier...
-    
     print("Stub preConfusionMatrix in ", __file__)
-    return None
+    true_positives = 0
+    false_positives = 0
+    true_negatives = 0
+    false_negatives = 0
+    for actual, predicted in zip(y, yPredicted):
+        if actual == 0 and predicted == 0:
+            true_negatives += 1
+        elif actual == 0 and predicted == 1:
+            false_positives += 1
+        elif actual == 1 and predicted == 0:
+            false_negatives += 1
+        elif actual == 1 and predicted == 1:
+            true_positives += 1
+
+    return [[true_negatives, false_positives], [false_negatives, true_positives]]
 
 def ExecuteAll(y, yPredicted):
     print("Confusion Matrix:", ConfusionMatrix(y, yPredicted))
