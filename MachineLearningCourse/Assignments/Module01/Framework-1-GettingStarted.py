@@ -61,3 +61,9 @@ trainSetAccuracy = EvaluateBinaryClassification.Accuracy(yTrain, yTrainPredicted
 
 print("\n---")
 print("Predicting the most common class gives: %.2f accuracy on the training set." % (trainSetAccuracy))
+
+# Question 4b : Evaluating on validation set
+yValidatePredicted = model.predict(xValidateRaw)
+EvaluateBinaryClassification.ExecuteAll(yValidate, yValidatePredicted)
+
+ 
