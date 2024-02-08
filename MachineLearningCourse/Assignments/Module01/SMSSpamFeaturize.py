@@ -1,5 +1,4 @@
 from collections import Counter
-import numpy as np
 import math
 
 
@@ -110,10 +109,10 @@ class SMSSpamFeaturize(object):
 
             # Calculate mutual information score for the word
             mi_scores[word] = (
-                p_word_spam * np.log(p_word_spam / (p_spam * p_word)) +
-                p_word_non_spam * np.log(p_word_non_spam / (p_non_spam * p_word)) +
-                p_not_word_spam * np.log(p_not_word_spam / (p_spam * p_not_word)) +
-                p_not_word_non_spam * np.log(p_not_word_non_spam / (p_non_spam * p_not_word)) 
+                p_word_spam * math.log(p_word_spam / (p_spam * p_word)) +
+                p_word_non_spam * math.log(p_word_non_spam / (p_non_spam * p_word)) +
+                p_not_word_spam * math.log(p_not_word_spam / (p_spam * p_not_word)) +
+                p_not_word_non_spam * math.log(p_not_word_non_spam / (p_non_spam * p_not_word)) 
                 )
 
         # Return the top n words based on mutual information
