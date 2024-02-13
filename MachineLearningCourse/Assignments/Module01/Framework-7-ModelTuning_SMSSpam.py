@@ -54,9 +54,7 @@ import MachineLearningCourse.MLUtilities.Visualizations.Charting as Charting
 #    for later tabulation and charting...
 def ExecuteEvaluationRun(runSpecification, xTrainRaw, yTrain, numberOfFolds = 5):
     startTime = time.time()
-    accuracy_values = []
 
-    # HERE upgrade this to use cross validation
     featurizer = SMSSpamFeaturize.SMSSpamFeaturize()
     featurizer.CreateVocabulary(xTrainRaw, yTrain, numFrequentWords=runSpecification['numFrequentWords'],
                                 numMutualInformationWords=runSpecification['numMutualInformationWords'])
@@ -66,12 +64,19 @@ def ExecuteEvaluationRun(runSpecification, xTrainRaw, yTrain, numberOfFolds = 5)
 
     # K-fold cross validation
     if numberOfFolds > 1:
-
+        accuracy_values = []
         for foldId in range(numberOfFolds):
             xTrain_fold, yTrain_fold, xEvaluate_fold, yEvaluate_fold = CrossValidation.CrossValidation(xTrain,
                                                                                                        yTrain,
                                                                                                        numberOfFolds,
                                                                                                        foldId)
+            # # HERE upgrade this to use cross validation
+            # featurizer = SMSSpamFeaturize.SMSSpamFeaturize()
+            # featurizer.CreateVocabulary(xTrain_fold, yTrain_fold, numFrequentWords=runSpecification['numFrequentWords'],
+            #                             numMutualInformationWords=runSpecification['numMutualInformationWords'])
+            #
+            # xTrain_fold = featurizer.Featurize(xTrain_fold)
+            # xEvaluate_fold = featurizer.Featurize(xEvaluate_fold)
 
             model = LogisticRegression.LogisticRegression()
             model.fit(xTrain_fold, yTrain_fold, convergence=runSpecification['convergence'], stepSize=runSpecification['stepSize'],
@@ -83,10 +88,16 @@ def ExecuteEvaluationRun(runSpecification, xTrainRaw, yTrain, numberOfFolds = 5)
         mean = sum(accuracy_values) / numberOfFolds
         runSpecification['accuracy'] = mean
         lower, upper = ErrorBounds.GetAccuracyBounds(runSpecification['accuracy'], len(yEvaluate_fold), 0.5)
-        runSpecification['accuracyErrorBound'] = mean - lower
+        runSpecification['accuracyErrorBound'] = upper - mean
+
 
     # Train on the entire training set and evaluate on the validation set
     elif numberOfFolds == 1:
+        featurizer = SMSSpamFeaturize.SMSSpamFeaturize()
+        featurizer.CreateVocabulary(xTrainRaw, yTrain, numFrequentWords=runSpecification['numFrequentWords'],
+                                    numMutualInformationWords=runSpecification['numMutualInformationWords'])
+        xTrain = featurizer.Featurize(xTrainRaw)
+        xValidate = featurizer.Featurize(xValidateRaw)
         model = LogisticRegression.LogisticRegression()
         model.fit(xTrain, yTrain,
                   convergence=runSpecification['convergence'],
@@ -95,20 +106,20 @@ def ExecuteEvaluationRun(runSpecification, xTrainRaw, yTrain, numberOfFolds = 5)
         runSpecification['accuracy'] = validationSetAccuracy
         confidence = 0.5
         lower, upper = ErrorBounds.GetAccuracyBounds(runSpecification['accuracy'], len(yValidate), confidence)
-        runSpecification['accuracyErrorBound'] = validationSetAccuracy - lower
+        runSpecification['accuracyErrorBound'] = upper - validationSetAccuracy
     endTime = time.time()
     runSpecification['runtime'] = endTime - startTime
     return runSpecification
 
 # Part 1: Defining the hyperparameter values to sweep  #larger ones then shift to smaller ones
-step_values = [2, 1.75, 1.5, 1.25, 1.0, 0.75, 0.5]
+step_values = [1.75, 1.5, 1.25, 1.0, 0.75, 0.5]
 convergence_values = [0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0001]
 numMutualInformationWords_values = [300, 150, 100, 50, 20, 0]
 numFrequentWords_values = [300, 150, 100, 50, 20, 0]
 
 
 numberOfFolds = 2
-hyperparams = {'stepSize': step_values, 'convergence': convergence_values, 'numFrequentWords': numFrequentWords_values, 'numMutualInformationWords': numMutualInformationWords_values}
+hyperparams = {'numFrequentWords': numFrequentWords_values, 'numMutualInformationWords': numMutualInformationWords_values, 'stepSize': step_values, 'convergence': convergence_values}
 
 def parameterSweepRunSpecifications(hyper_param, initialRunSpecification):
     hyper_param_key, hyper_param_values = hyper_param
@@ -153,14 +164,34 @@ def parameterSweepRunSpecifications(hyper_param, initialRunSpecification):
     return evaluationRunSpecifications
 
 def findOptimalSpecs(specs):
-    specs = sorted(specs, key=lambda x: x['accuracy'])
-    best_specs = specs[0]
-    for i in range(1, len(specs)):
+    # bestUpperBoundValue = max((spec['accuracy'] + spec['accuracyErrorBound']) for spec in specs)  #highest upper bound value
+    # tiedUpperBounds = [spec for spec in specs if (spec['accuracy'] + spec['accuracyErrorBound']) == bestUpperBoundValue] # tied values
+    # best_runtime = float('inf')
+    # best_spec ={}
+    # for spec in tiedUpperBounds:
+    #     runtime = spec['runtime']  # Unpack accuracy and runtime
+    #     if runtime < best_runtime:
+    #         best_runtime = runtime
+    #         best_spec = spec  # Track the best model
+    #
+    #     # Return the best model
+    # return {
+    #     'stepSize': best_spec['stepSize'],
+    #     'convergence': best_spec['convergence'],
+    #     'numFrequentWords': best_spec['numFrequentWords'],
+    #     'numMutualInformationWords': best_spec['numMutualInformationWords']
+    # }
 
-        bestUpperBound = best_specs['accuracy'] + specs[i]['accuracyErrorBound']
+    specs = sorted(specs, key=lambda x: x['accuracy'])
+
+    best_specs = specs[0]
+    bestAccUpperBound = best_specs['accuracy'] + best_specs['accuracyErrorBound']
+    for i in range(1, len(specs)):
+        newAccLowerBound = specs[i]['accuracy'] - specs[i]['accuracyErrorBound']
         # Part 3a: the value you pick is tied with the highest accuracy value according to a 75% 1-sided bound
-        if specs[i]['accuracy'] > bestUpperBound:
+        if newAccLowerBound > bestAccUpperBound:
             best_specs = specs[i]
+
         # Part 3b: the value you pick has the lowest runtime among these ‘tied’ values.
         elif specs[i]['accuracy'] > best_specs['accuracy'] and specs[i]['runtime'] < best_specs['runtime']:
             best_specs = specs[i]
@@ -177,15 +208,48 @@ def findOptimalSpecs(specs):
 
 
 
-initialHyperParams = optimalHyperParams = {'stepSize': 1.0, 'convergence': 0.005, 'numFrequentWords': 0, 'numMutualInformationWords': 20}
+initialHyperParams = optimalHyperParams = {'numFrequentWords': 0, 'numMutualInformationWords': 20, 'stepSize': 1.0, 'convergence': 0.005}
 
 #######################################################################################################################
-# Part 2: Optimal hyperparameters ( Independent of other hyperparameters)
+# Part 2: Optimal hyperparameters ( Independent of other hyperparameters not updated after each sweep)
 for sweep_number, hyper_param in enumerate(hyperparams.items(), start=1): # 1 sweep for each hyperparameter
     hyper_param_key, hyper_param_values = hyper_param
     print("Optimising hyperparameter: --->", hyper_param_key)
     evaluationRunSpecifications = parameterSweepRunSpecifications(hyper_param, optimalHyperParams)
-    evaluations = [ExecuteEvaluationRun(runSpec, xTrainRaw, yTrain) for runSpec in evaluationRunSpecifications]
+    evaluations = [ExecuteEvaluationRun(runSpec, xTrainRaw, yTrain, 2) for runSpec in evaluationRunSpecifications]
+
+    for evaluation in evaluations:
+        print(evaluation)
+
+    # Extracting data for plotting
+    accuracy_values = [evaluation['accuracy'] for evaluation in evaluations]
+    accuracy_errors = [evaluation['accuracyErrorBound'] for evaluation in evaluations]
+    runtime_values = [evaluation['runtime'] for evaluation in evaluations]
+
+    #Plotting the accuracy
+    Charting.PlotSeriesWithErrorBars([accuracy_values], [accuracy_errors], [hyper_param_key],
+                                     hyperparams[hyper_param_key], chartTitle="Accuracy vs " + hyper_param_key,
+                                     xAxisTitle=hyper_param_key, yAxisTitle="Accuracy", yBotLimit=0.8,
+                                     outputDirectory=kOutputDirectory, fileName="Part_2_Accuracy_vs_" + hyper_param_key)
+
+    # Plotting the runtime
+    Charting.PlotSeries([runtime_values], [hyper_param_key], hyperparams[hyper_param_key],
+                        chartTitle="Runtime vs " + hyper_param_key, xAxisTitle=hyper_param_key,
+                        yAxisTitle="Runtime (seconds)", outputDirectory=kOutputDirectory,
+                        fileName="Part_2_Runtime_vs_" + hyper_param_key)
+
+#######################################################################################################################
+# Part 3: Optimal hyperparameters (hyperparameters are updated after each sweep) # Sweep 1: init spec
+
+init_specs = ExecuteEvaluationRun(optimalHyperParams, xTrainRaw, yTrain, 1)
+validation_accuracy_across_sweeps = [init_specs['accuracy']] # initial accuracy
+validation_accuracy_errors_across_sweeps = [init_specs['accuracyErrorBound']] # initial accuracy error
+runtime_across_sweeps = [init_specs['runtime']] # initial spec runtime
+for sweep_number, hyper_param in enumerate(hyperparams.items(), start=2):
+    hyper_param_key, hyper_param_values = hyper_param
+    print("Optimising hyperparameter: --->", hyper_param_key)
+    evaluationRunSpecifications = parameterSweepRunSpecifications(hyper_param, optimalHyperParams)
+    evaluations = [ExecuteEvaluationRun(runSpec, xTrainRaw, yTrain, 2) for runSpec in evaluationRunSpecifications] #hyper paramter search with 2 fold cross validation
 
     for evaluation in evaluations:
         print(evaluation)
@@ -199,28 +263,14 @@ for sweep_number, hyper_param in enumerate(hyperparams.items(), start=1): # 1 sw
     Charting.PlotSeriesWithErrorBars([accuracy_values], [accuracy_errors], [hyper_param_key],
                                      hyperparams[hyper_param_key], chartTitle="Accuracy vs " + hyper_param_key,
                                      xAxisTitle=hyper_param_key, yAxisTitle="Accuracy", yBotLimit=0.8,
-                                     outputDirectory=kOutputDirectory, fileName="Part_2_Accuracy_vs_" + hyper_param_key)
+                                     outputDirectory=kOutputDirectory,
+                                     fileName="Update_Part_2_Accuracy_vs_" + hyper_param_key)
 
     # Plotting the runtime
     Charting.PlotSeries([runtime_values], [hyper_param_key], hyperparams[hyper_param_key],
                         chartTitle="Runtime vs " + hyper_param_key, xAxisTitle=hyper_param_key,
                         yAxisTitle="Runtime (seconds)", outputDirectory=kOutputDirectory,
-                        fileName="Part_2_Runtime_vs_" + hyper_param_key)
-
-#######################################################################################################################
-# Part 3: Optimal hyperparameters (Dependent on other hyperparameters)
-
-init_specs = ExecuteEvaluationRun(optimalHyperParams, xTrainRaw, yTrain, 1)
-validation_accuracy_across_sweeps = [init_specs['accuracy']] # initial accuracy
-validation_accuracy_errors_across_sweeps = [init_specs['accuracyErrorBound']] # initial accuracy error
-for sweep_number, hyper_param in enumerate(hyperparams.items(), start=1):
-    hyper_param_key, hyper_param_values = hyper_param
-    print("Optimising hyperparameter: --->", hyper_param_key)
-    evaluationRunSpecifications = parameterSweepRunSpecifications(hyper_param, optimalHyperParams)
-    evaluations = [ExecuteEvaluationRun(runSpec, xTrainRaw, yTrain, 2) for runSpec in evaluationRunSpecifications] #hyper paramter search with 2 fold cross validation
-
-    for evaluation in evaluations:
-        print(evaluation)
+                        fileName="Update_Part_2_Runtime_vs_" + hyper_param_key)
 
     optimalHyperParams = findOptimalSpecs(evaluations)
 
@@ -232,7 +282,7 @@ for sweep_number, hyper_param in enumerate(hyperparams.items(), start=1):
     result = ExecuteEvaluationRun(optimalHyperParams, xTrainRaw, yTrain, 1)
     validation_accuracy_across_sweeps.append(result['accuracy'])
     validation_accuracy_errors_across_sweeps.append(result['accuracyErrorBound'])
-    sweep_list = [i for i in range(1, sweep_number+2)] # 1 to sweep_number+1(initial accuracy)
+    sweep_list = [i for i in range(1, sweep_number+1)] # 1 to sweep_number+1(initial accuracy)
     # Part 4b: Plotting the validation accuracy across the sweeps
     Charting.PlotSeriesWithErrorBars([validation_accuracy_across_sweeps], [validation_accuracy_errors_across_sweeps],
                                      ["Accuracy"],
