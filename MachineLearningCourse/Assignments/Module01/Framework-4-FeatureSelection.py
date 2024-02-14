@@ -123,14 +123,14 @@ if doParameterTuning:
                         xAxisTitle="Number of Frequent words", yAxisTitle="Avg. Loss", outputDirectory=kOutputDirectory, fileName="Parameter Sweep_Num Frequent Words Train vs Validate loss")
 
     """
-    For Parameter sweep on number of mutual informaion words(MI)
+    For Parameter sweep on the number of mutual information words(MI)
 
     """
     # Store model performance scores
     trainLosses_MI = []
     validationLosses_MI = []
 
-    # Numeric values to evaluate for feature selection(Number of mutual informaion words(MI))
+    # Numeric values to evaluate for feature selection(Number of mutual information words(MI))
     lossXLabels_MI = [1, 10, 20, 30, 40, 50]
 
     for n_feature in lossXLabels_MI:
