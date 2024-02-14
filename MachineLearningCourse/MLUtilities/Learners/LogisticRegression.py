@@ -7,7 +7,6 @@ class LogisticRegression(object):
     """Stub class for a Logistic Regression Model"""
 
     def __init__(self, featureCount=None):
-        self.converged = False
         self.isInitialized = False
 
         if featureCount != None:

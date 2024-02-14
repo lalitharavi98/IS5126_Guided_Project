@@ -8,7 +8,10 @@ sys.path.append(curDir)  #look in the directory of this file too, i.e., Module01
 
 #specify the directory to store your visualization files
 # kOutputDirectory = "/users/stanleykok"  #use this for Mac or Linux
-kOutputDirectory = "C:\\Users\\winyan\\Git Projects\\IS5126_Guided_Project\\Visual" #use this for Windows
+kOutputDirectory = os.path.join(curDir, "Visualizations") #use this for Windows
+
+if not os.path.exists(kOutputDirectory):
+    os.makedirs(kOutputDirectory)
 
 runUnitTest = False
 if runUnitTest:
@@ -66,13 +69,12 @@ if runSMSSpam:
     import MachineLearningCourse.MLUtilities.Learners.LogisticRegression as LogisticRegression
     import MachineLearningCourse.MLUtilities.Evaluations.EvaluateBinaryClassification as EvaluateBinaryClassification
 
-    logisticRegressionModel = LogisticRegression.LogisticRegression()
-
     # logisticRegressionModel.fit(xTrain, yTrain, stepSize=1.0, convergence=0.005)
     # FOr question 3c, convergence parameter tuning
     convergence_values = [0.05, 0.01, 0.001, 0.0001, 0.00001]
 
     for convergence in convergence_values:
+        logisticRegressionModel = LogisticRegression.LogisticRegression()
         print("\nConvergence value used:", convergence)
 
         # Fit the model with the current convergence value
@@ -86,15 +88,24 @@ if runSMSSpam:
     #############################
     # You may find the following module helpful for making charts. You'll have to install matplotlib (see the lecture notes).
     #
+
+    logisticRegressionModel = LogisticRegression.LogisticRegression()
     import MachineLearningCourse.MLUtilities.Visualizations.Charting as Charting
 
-    # trainLosses, validationLosses, and lossXLabels are parallel arrays with the losses you want to plot at the specified x coordinates
-    trainLosses = []
-    validationLosses = []
-    lossXLabels = []
+    logisticRegressionModel.isInitialized = False
+    logisticRegressionModel.incrementalFit(xTrain, yTrain, maxSteps=0, stepSize=1.0, convergence=0.0001)
 
-    for step in range(0, 1000, 100):
-        logisticRegressionModel.incrementalFit(xTrain, yTrain, maxSteps=100, stepSize=1.0, convergence=0.00001)
+    train_loss_initial = logisticRegressionModel.loss(xTrain, yTrain)
+    validation_loss_initial = logisticRegressionModel.loss(xValidate, yValidate)
+    loss_label_initial = 0
+
+    trainLosses = [train_loss_initial]
+    validationLosses = [validation_loss_initial]
+    lossXLabels = [loss_label_initial]
+
+    while not logisticRegressionModel.converged:
+        # do 100 iterations of training
+        logisticRegressionModel.incrementalFit(xTrain, yTrain, maxSteps=100, stepSize=1.0, convergence=0.0001)
 
         train_loss = logisticRegressionModel.loss(xTrain, yTrain)
         trainLosses.append(train_loss)
@@ -102,6 +113,7 @@ if runSMSSpam:
         validation_loss = logisticRegressionModel.loss(xValidate, yValidate)
         validationLosses.append(validation_loss)
 
-        lossXLabels.append(step)
+        lossXLabels.append(logisticRegressionModel.totalGradientDescentSteps)
 
+        # trainLosses, validationLosses, and lossXLabels are parallel arrays with the losses you want to plot at the specified x coordinates
     Charting.PlotSeries([trainLosses, validationLosses], ['Train', 'Validate'], lossXLabels, chartTitle="Logistic Regression", xAxisTitle="Gradient Descent Steps", yAxisTitle="Avg. Loss", outputDirectory=kOutputDirectory, fileName="3-Logistic Regression Train vs Validate loss")

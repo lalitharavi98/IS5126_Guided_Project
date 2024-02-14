@@ -5,9 +5,9 @@ curDir = os.path.dirname(os.path.abspath(__file__))
 projDir = os.path.join(curDir,"..","..","..")
 sys.path.append(projDir) #look in the directory containing MachineLearningCourse/
 sys.path.append(curDir)  #look in the directory of this file too, i.e., Module01/
-
+from joblib import Parallel, delayed
 #specify the directory to store your visualization files
-kOutputDirectory = "/Users/dhanushlalitha/Documents/GIT/IS/IS5126_Guided_Project/MachineLearningCourse/Plots//"  #use this for Mac or Linux
+kOutputDirectory = os.path.join(curDir, "Visualizations")  #use this for Mac or Linux
 #kOutputDirectory = "C:\\temp\\visualize" #use this for Windows
 
 import MachineLearningCourse.MLProjectSupport.SMSSpam.SMSSpamDataset as SMSSpamDataset
@@ -55,28 +55,22 @@ import MachineLearningCourse.MLUtilities.Visualizations.Charting as Charting
 def ExecuteEvaluationRun(runSpecification, xTrainRaw, yTrain, numberOfFolds = 5):
     startTime = time.time()
 
-    featurizer = SMSSpamFeaturize.SMSSpamFeaturize()
-    featurizer.CreateVocabulary(xTrainRaw, yTrain, numFrequentWords=runSpecification['numFrequentWords'],
-                                numMutualInformationWords=runSpecification['numMutualInformationWords'])
-
-    xTrain = featurizer.Featurize(xTrainRaw)
-    xValidate = featurizer.Featurize(xValidateRaw)
 
     # K-fold cross validation
     if numberOfFolds > 1:
         accuracy_values = []
         for foldId in range(numberOfFolds):
-            xTrain_fold, yTrain_fold, xEvaluate_fold, yEvaluate_fold = CrossValidation.CrossValidation(xTrain,
+            xTrain_fold, yTrain_fold, xEvaluate_fold, yEvaluate_fold = CrossValidation.CrossValidation(xTrainRaw,
                                                                                                        yTrain,
                                                                                                        numberOfFolds,
                                                                                                        foldId)
-            # # HERE upgrade this to use cross validation
-            # featurizer = SMSSpamFeaturize.SMSSpamFeaturize()
-            # featurizer.CreateVocabulary(xTrain_fold, yTrain_fold, numFrequentWords=runSpecification['numFrequentWords'],
-            #                             numMutualInformationWords=runSpecification['numMutualInformationWords'])
-            #
-            # xTrain_fold = featurizer.Featurize(xTrain_fold)
-            # xEvaluate_fold = featurizer.Featurize(xEvaluate_fold)
+            # HERE upgrade this to use cross validation
+            featurizer = SMSSpamFeaturize.SMSSpamFeaturize()
+            featurizer.CreateVocabulary(xTrain_fold, yTrain_fold, numFrequentWords=runSpecification['numFrequentWords'],
+                                        numMutualInformationWords=runSpecification['numMutualInformationWords'])
+
+            xTrain_fold = featurizer.Featurize(xTrain_fold)
+            xEvaluate_fold = featurizer.Featurize(xEvaluate_fold)
 
             model = LogisticRegression.LogisticRegression()
             model.fit(xTrain_fold, yTrain_fold, convergence=runSpecification['convergence'], stepSize=runSpecification['stepSize'],
@@ -91,7 +85,7 @@ def ExecuteEvaluationRun(runSpecification, xTrainRaw, yTrain, numberOfFolds = 5)
         runSpecification['accuracyErrorBound'] = upper - mean
 
 
-    # Train on the entire training set and evaluate on the validation set
+    # Train on entire data set and Evaluate on Validation data
     elif numberOfFolds == 1:
         featurizer = SMSSpamFeaturize.SMSSpamFeaturize()
         featurizer.CreateVocabulary(xTrainRaw, yTrain, numFrequentWords=runSpecification['numFrequentWords'],
@@ -164,36 +158,17 @@ def parameterSweepRunSpecifications(hyper_param, initialRunSpecification):
     return evaluationRunSpecifications
 
 def findOptimalSpecs(specs):
-    # bestUpperBoundValue = max((spec['accuracy'] + spec['accuracyErrorBound']) for spec in specs)  #highest upper bound value
-    # tiedUpperBounds = [spec for spec in specs if (spec['accuracy'] + spec['accuracyErrorBound']) == bestUpperBoundValue] # tied values
-    # best_runtime = float('inf')
-    # best_spec ={}
-    # for spec in tiedUpperBounds:
-    #     runtime = spec['runtime']  # Unpack accuracy and runtime
-    #     if runtime < best_runtime:
-    #         best_runtime = runtime
-    #         best_spec = spec  # Track the best model
-    #
-    #     # Return the best model
-    # return {
-    #     'stepSize': best_spec['stepSize'],
-    #     'convergence': best_spec['convergence'],
-    #     'numFrequentWords': best_spec['numFrequentWords'],
-    #     'numMutualInformationWords': best_spec['numMutualInformationWords']
-    # }
-
     specs = sorted(specs, key=lambda x: x['accuracy'])
 
-    best_specs = specs[0]
-    bestAccUpperBound = best_specs['accuracy'] + best_specs['accuracyErrorBound']
-    for i in range(1, len(specs)):
-        newAccLowerBound = specs[i]['accuracy'] - specs[i]['accuracyErrorBound']
+    best_specs = specs[0] # lowest accuracy best specs
+    bestAccUpperBound = best_specs['accuracy'] + best_specs['accuracyErrorBound'] # upper bound
+    for i in range(1, len(specs)): # iterate through the specs
+        newAccLowerBound = specs[i]['accuracy'] - specs[i]['accuracyErrorBound'] #lower bound
         # Part 3a: the value you pick is tied with the highest accuracy value according to a 75% 1-sided bound
-        if newAccLowerBound > bestAccUpperBound:
+        if newAccLowerBound > bestAccUpperBound: # non overlapping bounds
             best_specs = specs[i]
-
-        # Part 3b: the value you pick has the lowest runtime among these ‘tied’ values.
-        elif specs[i]['accuracy'] > best_specs['accuracy'] and specs[i]['runtime'] < best_specs['runtime']:
+        # Part 3b: the value you pick has the lowest runtime among these ‘tied’ values. #overlapping bounds
+        elif specs[i]['accuracy'] >= best_specs['accuracy'] and specs[i]['runtime'] < best_specs['runtime']:
             best_specs = specs[i]
 
     return {
@@ -210,13 +185,14 @@ def findOptimalSpecs(specs):
 
 initialHyperParams = optimalHyperParams = {'numFrequentWords': 0, 'numMutualInformationWords': 20, 'stepSize': 1.0, 'convergence': 0.005}
 
-#######################################################################################################################
+######################################################################################################################
 # Part 2: Optimal hyperparameters ( Independent of other hyperparameters not updated after each sweep)
 for sweep_number, hyper_param in enumerate(hyperparams.items(), start=1): # 1 sweep for each hyperparameter
     hyper_param_key, hyper_param_values = hyper_param
     print("Optimising hyperparameter: --->", hyper_param_key)
     evaluationRunSpecifications = parameterSweepRunSpecifications(hyper_param, optimalHyperParams)
-    evaluations = [ExecuteEvaluationRun(runSpec, xTrainRaw, yTrain, 2) for runSpec in evaluationRunSpecifications]
+    evaluations = Parallel(n_jobs=4)(delayed(ExecuteEvaluationRun)(runSpec, xTrainRaw, yTrain, 2) for runSpec in evaluationRunSpecifications)
+    # evaluations = [ExecuteEvaluationRun(runSpec, xTrainRaw, yTrain, 2) for runSpec in evaluationRunSpecifications]
 
     for evaluation in evaluations:
         print(evaluation)
@@ -249,7 +225,8 @@ for sweep_number, hyper_param in enumerate(hyperparams.items(), start=2):
     hyper_param_key, hyper_param_values = hyper_param
     print("Optimising hyperparameter: --->", hyper_param_key)
     evaluationRunSpecifications = parameterSweepRunSpecifications(hyper_param, optimalHyperParams)
-    evaluations = [ExecuteEvaluationRun(runSpec, xTrainRaw, yTrain, 2) for runSpec in evaluationRunSpecifications] #hyper paramter search with 2 fold cross validation
+    evaluations = Parallel(n_jobs=4)(delayed(ExecuteEvaluationRun)(runSpec, xTrainRaw, yTrain, 2) for runSpec in evaluationRunSpecifications)
+    # evaluations = [ExecuteEvaluationRun(runSpec, xTrainRaw, yTrain, 2) for runSpec in evaluationRunSpecifications] #hyper paramter search with 2 fold cross validation
 
     for evaluation in evaluations:
         print(evaluation)
@@ -279,9 +256,10 @@ for sweep_number, hyper_param in enumerate(hyperparams.items(), start=2):
     print(f"Optimal hyper parameters after sweep {sweep_number}: ", optimalHyperParams)
 
     # Part 4a: Evaluating the accuracy on the validation set after optimising each hyperparameter
-    result = ExecuteEvaluationRun(optimalHyperParams, xTrainRaw, yTrain, 1)
-    validation_accuracy_across_sweeps.append(result['accuracy'])
-    validation_accuracy_errors_across_sweeps.append(result['accuracyErrorBound'])
+    result = Parallel(n_jobs=4)(delayed(ExecuteEvaluationRun)(optimalHyperParams, xTrainRaw, yTrain, 1) for runSpec in evaluationRunSpecifications)
+    # result = ExecuteEvaluationRun(optimalHyperParams, xTrainRaw, yTrain, 1)
+    validation_accuracy_across_sweeps.append(result[0]['accuracy'])
+    validation_accuracy_errors_across_sweeps.append(result[0]['accuracyErrorBound'])
     sweep_list = [i for i in range(1, sweep_number+1)] # 1 to sweep_number+1(initial accuracy)
     # Part 4b: Plotting the validation accuracy across the sweeps
     Charting.PlotSeriesWithErrorBars([validation_accuracy_across_sweeps], [validation_accuracy_errors_across_sweeps],
@@ -292,7 +270,56 @@ for sweep_number, hyper_param in enumerate(hyperparams.items(), start=2):
 
 
 # Best hyperarameters after all sweeps
-print(f"Best hyper parameters after all sweeps: ", optimalHyperParams)
+final_accuracy = validation_accuracy_across_sweeps[-1]
+print(f"Best hyper parameters after initial sweeps: {optimalHyperParams} with accuracy: {final_accuracy}", )
+
+
+
+
+# Part 5: Continute iterating to optimize hyperparameters until convergence by doing the following. Stop when you can no longer significantly improve accuracy according to a 75%
+# 1-sided bound
+#  We do not tune other hyper params further as they are already optimal
+# fine_tuning_optimal_hyperparams = optimalHyperParams
+optimalHyperParams = {'stepSize': 1.75, 'convergence': 0.0001, 'numFrequentWords': 300, 'numMutualInformationWords': 300}
+accuracy_increment_threshold = 0.01 # 1% accuracy increment threshold
+initial_accuracy_for_fine_tuning = final_accuracy # initial accuracy after all sweeps
+counter = 0
+increment = 0.25 # increment value for step size
+num_values = 5 # number of values to sweep
+current_accuracy = float('inf')
+best_accuracy = 0
+best_hyperparams = optimalHyperParams
+fine_tuning_optimal_hyperparams = optimalHyperParams
+while (current_accuracy - initial_accuracy_for_fine_tuning) > accuracy_increment_threshold:
+    counter +=1
+    step_values_new = [fine_tuning_optimal_hyperparams['stepSize'] + i * increment for i in range(num_values)]
+    hyper_param = ('stepSize', step_values_new)
+    evaluationRunSpecifications = parameterSweepRunSpecifications(hyper_param, fine_tuning_optimal_hyperparams)
+    evaluations = Parallel(n_jobs=4)(delayed(ExecuteEvaluationRun)(runSpec, xTrainRaw, yTrain, 2) for runSpec in evaluationRunSpecifications)
+    for evaluation in evaluations:
+        print(evaluation)
+    optimisedHyperParams = findOptimalSpecs(evaluations)
+    print("#" * 50)
+    print(f"Optimal hyper parameters after {counter} round: ", optimisedHyperParams)
+    # Evaluating the accuracy on the validation set after optimising hyperparameter
+    result = Parallel(n_jobs=4)(delayed(ExecuteEvaluationRun)(optimalHyperParams, xTrainRaw, yTrain, 1) for runSpec in
+                                evaluationRunSpecifications)
+
+    current_accuracy = result[0]['accuracy']
+    if((current_accuracy - initial_accuracy_for_fine_tuning) < accuracy_increment_threshold):
+        best_hyperparams = optimisedHyperParams
+        best_accuracy = current_accuracy
+        break
+    fine_tuning_optimal_hyperparams = optimisedHyperParams
+
+
+print(f"Best hyper parameters after fine tuning: {best_hyperparams} with accuracy: {best_accuracy} ", )
+
+
+
+
+
+
 
 
 # Part 6: ROC of initial VS Best model
@@ -306,23 +333,24 @@ featurizer.CreateVocabulary(xTrainRaw, yTrain, numFrequentWords = initialHyperPa
 
 xTrain = featurizer.Featurize(xTrainRaw)
 xTest = featurizer.Featurize(xTestRaw)
-
+print("Initial hyper parameters: ", initialHyperParams)
 init_model = LogisticRegression.LogisticRegression()
 init_model.fit(xTrain, yTrain, convergence=initialHyperParams['convergence'], stepSize=initialHyperParams['stepSize'], verbose=False)
 EvaluateBinaryClassification.ExecuteAll(yTest, init_model.predict(xTest))
+
 (init_modelFPRs, init_modelFNRs, init_thresholds) = TabulateModelPerformanceForROC(init_model, xTest, yTest)
 seriesFPRs.append(init_modelFPRs)
 seriesFNRs.append(init_modelFNRs)
 seriesLabels.append('initial hyper parameters')
 
 featurizer = SMSSpamFeaturize.SMSSpamFeaturize()
-featurizer.CreateVocabulary(xTrainRaw, yTrain, numFrequentWords = optimalHyperParams['numFrequentWords'], numMutualInformationWords = optimalHyperParams['numMutualInformationWords'])
+featurizer.CreateVocabulary(xTrainRaw, yTrain, numFrequentWords = best_hyperparams['numFrequentWords'], numMutualInformationWords = best_hyperparams['numMutualInformationWords'])
 
 xTrain = featurizer.Featurize(xTrainRaw)
 xTest = featurizer.Featurize(xTestRaw)
-
+print("Best hyper parameters: ", best_hyperparams)
 best_model = LogisticRegression.LogisticRegression()
-best_model.fit(xTrain, yTrain, convergence=optimalHyperParams['convergence'], stepSize=optimalHyperParams['stepSize'], verbose=False)
+best_model.fit(xTrain, yTrain, convergence=best_hyperparams['convergence'], stepSize=best_hyperparams['stepSize'], verbose=False)
 EvaluateBinaryClassification.ExecuteAll(yTest, best_model.predict(xTest))
 
 (best_modelFPRs, best_modelFNRs, best_thresholds) = TabulateModelPerformanceForROC(best_model, xTest, yTest)
