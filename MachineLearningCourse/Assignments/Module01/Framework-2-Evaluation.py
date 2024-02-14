@@ -41,10 +41,14 @@ for i in range(5):
     
 # Now let's up our modeling game (as compared to predicting the most common class)
 #  we'll use a heuristic (hand-tuned) linear model.
-import MachineLearningCourse.MLUtilities.Learners.LinearHeuristicModel as LinearHeuristicModel
-model = LinearHeuristicModel.LinearHeuristicModel()
 
-model.fit(xTrain, yTrain, -1.0, [ .75, .75, .75, .25, .25 ])
+# import MachineLearningCourse.MLUtilities.Learners.LinearHeuristicModel as LinearHeuristicModel
+# model = LinearHeuristicModel.LinearHeuristicModel()
+# model.fit(xTrain, yTrain, -1.0, [ .75, .75, .75, .25, .25 ])
+
+import MachineLearningCourse.MLUtilities.Learners.MostCommonClassModel as MostCommonClassModel
+model = MostCommonClassModel.MostCommonClassModel()
+model.fit(xTrain, yTrain)
 
 print("\n - Inspect the weights on the heuristically-tuned model -")
 model.visualize()
