@@ -1,5 +1,5 @@
 from collections import Counter
-import numpy as np
+
 import math
 
 
@@ -7,7 +7,7 @@ class SMSSpamFeaturize(object):
     """A class to coordinate turning SMS spam strings into feature vectors."""
 
     def __init__(self, useHandCraftedFeatures=False):
-        # use hand crafted features specified in _FeaturizeXForHandCrafted()
+        # use handcrafted features specified in _FeaturizeXForHandCrafted()
         self.useHandCraftedFeatures = useHandCraftedFeatures
 
         self.ResetVocabulary()
@@ -20,7 +20,7 @@ class SMSSpamFeaturize(object):
         return str.split(xRaw)
 
     """
-    Question 4a : Implementing the stub functions:
+    Question 4a: Implementing the stub functions:
     -> FindMostFrequentWords(self, x, n):
     -> FindTopWordsByMutualInformation(self, x, y, n)
 
@@ -37,14 +37,12 @@ class SMSSpamFeaturize(object):
         # Return the top n most frequent words
         return [word for word, _ in word_counts.most_common(n)]
 
-    # def FindTopWordsByMutualInformation(self, x, y, n):
-        # print("Stub FindTopWordsByMutualInformation in ", __file__)
-
         """
         Finds the top n words with the highest mutual information with the labels.
         """
 
     def FindTopWordsByMutualInformation(self, x, y, n):
+        # print("Stub FindTopWordsByMutualInformation in ", __file__)
         # Count occurrences of words, class 0, and class 1 for mutual information calculation
         word_counts = Counter()
         class_0_counts = Counter()
@@ -55,8 +53,8 @@ class SMSSpamFeaturize(object):
 
         # Calculate class probabilities
         """
-        Probability(spam) = (Number of messages that are labelled spam/(Number of messages that are labelled spam + Number of messages that are labelled non spam))
-        Similarly (non_spam) = (Number of messages that are labelled non spam/(Number of messages that are labelled spam + Number of messages that are labelled non spam))
+        Probability(spam) = (Number of messages that are labelled spam/(Number of messages that are labelled spam + Number of messages that are labelled non-spam))
+        Similarly (non_spam) = (Number of messages that are labelled non-spam/(Number of messages that are labelled spam + Number of messages that are labelled non spam))
         
         """
 
@@ -165,7 +163,7 @@ class SMSSpamFeaturize(object):
     def _FeaturizeXForHandCraftedFeatures(self, xRaw):
         features = []
 
-        # This function can produce an array of hand-crafted features to add on top of the vocabulary related features
+        # This function can produce an array of hand-crafted features to add on top of the vocabulary-related features
         if self.useHandCraftedFeatures:
             # Have a feature for longer texts
             if (len(xRaw) > 40):
