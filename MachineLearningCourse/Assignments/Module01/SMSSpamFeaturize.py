@@ -55,7 +55,7 @@ class SMSSpamFeaturize(object):
         """
         Probability(spam) = (Number of messages that are labelled spam/(Number of messages that are labelled spam + Number of messages that are labelled non-spam))
         Similarly (non_spam) = (Number of messages that are labelled non-spam/(Number of messages that are labelled spam + Number of messages that are labelled non spam))
-        
+
         """
 
         p_spam = sum(1 for label in y if label == 1) / len(y)
@@ -63,7 +63,7 @@ class SMSSpamFeaturize(object):
 
         # Iterate over each example in the dataset to count word occurrences and class-specific word occurrences
         for i in range(len(x)):
-            
+
             words = x[i].split()
             # Use a set to keep track of already counted words in the current text
             counted = set()
@@ -80,10 +80,10 @@ class SMSSpamFeaturize(object):
                         class_1_counts[word] += 1
                     counted.add(word)
 
-         # Calculate probabilities for mutual information calculation
+        # Calculate probabilities for mutual information calculation
         """
          MI(word, label) = ∑ P(word, label) * log2(P(word, label) / (P(word) * P(label)))
-        
+
          where :
          P(word, label): Joint probability of the word and the label occurring together.
          P(word): Probability of the word appearing in any message.
@@ -91,41 +91,39 @@ class SMSSpamFeaturize(object):
          log2: Logarithm with base 2
         """
         for word in word_counts:
-            
             # Calculate probabilities with smoothing
             p_word = (word_counts[word] + 1) / (len(y) + 2)
             p_not_word = 1 - p_word
 
             # Calculate conditional probabilities
             p_word_spam = (
-                class_1_counts[word] + 1) / (class_0_counts[word] + class_1_counts[word] + 2) * p_word
+                                  class_1_counts[word] + 1) / (class_0_counts[word] + class_1_counts[word] + 2) * p_word
             p_word_non_spam = (
-                class_0_counts[word] + 1) / (class_0_counts[word] + class_1_counts[word] + 2) * p_word
-            
+                                      class_0_counts[word] + 1) / (
+                                          class_0_counts[word] + class_1_counts[word] + 2) * p_word
+
             p_not_word_spam = p_spam - p_word_spam
             p_not_word_non_spam = p_non_spam - p_word_non_spam
-            
 
             # Calculate mutual information score for the word
             mi_scores[word] = (
-                p_word_spam * np.log(p_word_spam / (p_spam * p_word)) +
-                p_word_non_spam * np.log(p_word_non_spam / (p_non_spam * p_word)) +
-                p_not_word_spam * np.log(p_not_word_spam / (p_spam * p_not_word)) +
-                p_not_word_non_spam * np.log(p_not_word_non_spam / (p_non_spam * p_not_word)) 
-                )
+                    p_word_spam * math.log(p_word_spam / (p_spam * p_word)) +
+                    p_word_non_spam * math.log(p_word_non_spam / (p_non_spam * p_word)) +
+                    p_not_word_spam * math.log(p_not_word_spam / (p_spam * p_not_word)) +
+                    p_not_word_non_spam *
+                    math.log(p_not_word_non_spam / (p_non_spam * p_not_word))
+            )
 
         # Return the top n words based on mutual information
         return [word for word, _ in mi_scores.most_common(n)]
-
-
-    
 
     """
     Question 4 : Updating the function CreateVocabulary
 
     """
 
-    def CreateVocabulary(self, xTrainRaw, yTrainRaw, numFrequentWords=0, numMutualInformationWords=0, supplementalVocabularyWords=[]):
+    def CreateVocabulary(self, xTrainRaw, yTrainRaw, numFrequentWords=0, numMutualInformationWords=0,
+                         supplementalVocabularyWords=[]):
         if self.vocabularyCreated:
             raise UserWarning(
                 "Calling CreateVocabulary after the vocabulary was already created. Call ResetVocabulary to reinitialize.")

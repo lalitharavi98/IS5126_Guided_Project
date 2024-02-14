@@ -9,7 +9,7 @@ sys.path.append(curDir)  #look in the directory of this file too, i.e., Module01
 
 #specify the directory to store your visualization files
 # use this for Mac or Linux
-kOutputDirectory = "/Users/sree/Downloads/MachineLearningCourse/Graphs"
+kOutputDirectory = os.path.join(curDir, "Visualizations")
 #kOutputDirectory = "C:\\temp\\visualize" #use this for Windows
 # endregion START
 
